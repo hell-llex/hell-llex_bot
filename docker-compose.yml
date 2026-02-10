@@ -1,0 +1,14 @@
+services:
+  bot:
+    image: node:20-alpine
+    working_dir: /app
+    env_file: .env
+    volumes:
+      - ./:/app
+      - ./data:/app/data
+      - node_modules:/app/node_modules
+    command: sh -lc "npm ci && npm run dev"
+    restart: unless-stopped
+
+volumes:
+  node_modules:
