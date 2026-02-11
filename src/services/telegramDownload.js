@@ -1,8 +1,3 @@
-// src/services/telegramDownload.js
-//
-// Скачивает файл из Telegram в указанную конечную папку.
-// Никаких знаний про "режимы", "inbox", "noteId" и т.п. — только destDir.
-
 import {promises as fs} from "node:fs";
 import path from "node:path";
 
@@ -42,7 +37,6 @@ export async function downloadTelegramFile({
 
     let file;
     try {
-        // server-side имя (обычно с расширением)
         file = await bot.telegram.getFile(fileId);
     } catch (err) {
         const description = err?.response?.description || "";
@@ -56,7 +50,6 @@ export async function downloadTelegramFile({
 
     const fileName = preferredFileName || serverName;
 
-    // URL для скачивания
     const urlObj = await bot.telegram.getFileLink(fileId);
     const url = urlObj.toString();
 

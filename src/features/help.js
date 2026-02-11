@@ -1,7 +1,3 @@
-// src/features/help.js
-// Команда /help — показывает список доступных команд.
-// Позже сюда можно подмешивать конфиг, версии, ссылки, и т.д.
-
 export function registerHelp(bot) {
     bot.command("help", async (ctx) => {
         const text =

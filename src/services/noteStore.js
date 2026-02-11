@@ -1,11 +1,3 @@
-// src/services/noteStore.js
-//
-// Сохраняет IncomingNote в файловую структуру:
-// inboxRoot/<noteId>/note.md + медиа рядом
-//
-// Сейчас делаем максимально просто: без БД, без "атомарных" tmp.
-// Если захотим — позже добавим staging/tmp.
-
 import fs from "node:fs/promises";
 import path from "node:path";
 import { config } from "../config/config.js";
@@ -20,20 +12,18 @@ async function readTemplate() {
 }
 
 function renderTemplate(template, vars) {
-    // очень простой рендер: заменяем {{key}} на строку
-    return template.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_, key) => {
+    return template.replace(/{{\s*([a-zA-Z0-9_]+)\s*}}/g, (_, key) => {
         const v = vars[key];
         return v === undefined || v === null ? "" : String(v);
     });
 }
 
 function safeYamlValue(v) {
-    // чтобы YAML не ломался от двоеточий/переносов
     if (v === undefined || v === null) return "";
     const s = String(v);
     if (s === "") return "";
     if (/[\n\r]/.test(s)) return JSON.stringify(s); // многострочное в JSON-строке
-    if (/[:#\[\]\{\},&*!|>'"%@`]/.test(s)) return JSON.stringify(s);
+    if (/[:#\[\]{},&*!|>'"%@`]/.test(s)) return JSON.stringify(s);
     return s;
 }
 
@@ -54,7 +44,7 @@ export async function saveIncomingNote(note) {
     let template = await readTemplate();
     if (!hasMedia) {
         template = template.replace(
-            /\r?\n## Media\r?\n\{\{mediaEmbeds\}\}\r?\n\r?\n## Media files\r?\n\{\{mediaList\}\}\r?\n?/,
+            /\r?\n## Media\r?\n{{mediaEmbeds}}\r?\n\r?\n## Media files\r?\n{{mediaList}}\r?\n?/,
             "\n"
         );
     }
@@ -67,7 +57,6 @@ export async function saveIncomingNote(note) {
             ? note.media
                 .map((m) => {
                     const name = m.fileName;
-                    // document лучше как ссылка, остальное — как embed
                     if (m.kind === "document") return `[${name}](${name})`;
                     return `![${name}](${name})`;
                 })

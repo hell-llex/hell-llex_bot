@@ -1,4 +1,3 @@
-// src/features/admin/register.js
 import { config } from "../../config/config.js";
 
 export function register(bot) {

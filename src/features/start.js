@@ -1,6 +1,3 @@
-// src/features/start.js
-// Команда /start — стандартная стартовая точка.
-
 export function registerStart(bot) {
     bot.start((ctx) => {
         ctx.reply(

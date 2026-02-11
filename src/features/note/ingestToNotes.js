@@ -1,11 +1,3 @@
-// src/features/note/ingestToNotes.js
-//
-// NOTE ingestion:
-// - одиночные сообщения -> msg_<message_id>/note.md
-// - альбомы (media_group) -> mg_<media_group_id>/note.md
-// - медиа скачиваем сразу в папку заметки
-// - ничего не пересылаем обратно (как в inspect), только "✅ Saved"
-
 import { media_group } from "@dietime/telegraf-media-group";
 import { config } from "../../config/config.js";
 import { downloadTelegramFile } from "../../services/telegramDownload.js";
@@ -65,59 +57,20 @@ function buildPreferredFileName(kind, file, counters) {
     return `${kind}_${index}${ext}`;
 }
 
-// function applyEntitiesToMarkdown(text, entities = []) {
-//     if (!text || !entities?.length) return text || "";
-//
-//     // Чтобы не ломать offsets при вставках, идём с конца
-//     const sorted = [...entities].sort((a, b) => (b.offset ?? 0) - (a.offset ?? 0));
-//
-//     let out = text;
-//
-//     for (const e of sorted) {
-//         const offset = e.offset ?? 0;
-//         const length = e.length ?? 0;
-//         if (length <= 0) continue;
-//
-//         const part = out.slice(offset, offset + length);
-//
-//         if (e.type === "text_link" && e.url) {
-//             out = out.slice(0, offset) + `[${part}](${e.url})` + out.slice(offset + length);
-//             continue;
-//         }
-//
-//         // "url" — это когда Telegram сам выделил ссылку в тексте.
-//         // Можно оставить как есть (Markdown и так распознаёт), но не мешает.
-//         if (e.type === "url") {
-//             continue;
-//         }
-//     }
-//
-//     return out;
-// }
-
-// function extractTextWithEntitiesAsMarkdown(msg) {
-//     const text = msg.text ?? msg.caption ?? "";
-//     const entities = msg.entities ?? msg.caption_entities ?? [];
-//     return applyEntitiesToMarkdown(text, entities);
-// }
 
 function normalizeUrl(u) {
     if (!u) return "";
-    // если уже есть схема — оставляем
     if (/^https?:\/\//i.test(u)) return u;
     return `https://${u}`;
 }
 
-// применяем entities к тексту (Telegram offsets в UTF-16 — JS slice работает ок)
 function applyEntitiesToMarkdown(text, entities = []) {
     if (!text || !entities?.length) return text || "";
 
-    // сортируем: с конца к началу, чтобы вставки не ломали offsets
     const sorted = [...entities].sort((a, b) => {
         const ao = a.offset ?? 0;
         const bo = b.offset ?? 0;
         if (bo !== ao) return bo - ao;
-        // если одинаковый offset — сначала более длинный
         return (b.length ?? 0) - (a.length ?? 0);
     });
 
@@ -140,7 +93,6 @@ function applyEntitiesToMarkdown(text, entities = []) {
             }
 
             case "url": {
-                // part — это и есть ссылка
                 const url = normalizeUrl(part);
                 replaced = `[${part}](${url})`;
                 break;
@@ -163,7 +115,6 @@ function applyEntitiesToMarkdown(text, entities = []) {
                 break;
 
             case "pre": {
-                // Telegram pre может быть с language, но пока просто блок
                 replaced = `\n\`\`\`\n${part}\n\`\`\`\n`;
                 break;
             }
@@ -171,9 +122,6 @@ function applyEntitiesToMarkdown(text, entities = []) {
             case "spoiler":
                 replaced = `||${part}||`;
                 break;
-
-            // underline в Markdown нет стандартно — можно HTML, но пока пропустим
-            // case "underline": replaced = `<u>${part}</u>`; break;
 
             default:
                 replaced = part;
@@ -185,7 +133,6 @@ function applyEntitiesToMarkdown(text, entities = []) {
     return out;
 }
 
-// ВАЖНО: если есть caption — используем caption + caption_entities
 function extractMarkdownFromMessage(msg) {
     if (msg.caption) {
         return applyEntitiesToMarkdown(msg.caption, msg.caption_entities || []);
@@ -201,9 +148,6 @@ function normalizeText(text) {
     return t ? t : "⛔️ Текста нет";
 }
 
-// function extractText(msg) {
-//     return msg.text ?? msg.caption ?? "";
-// }
 
 function isForwarded(msg) {
     return Boolean(
@@ -216,7 +160,6 @@ function isForwarded(msg) {
 }
 
 function extractForwardMeta(msg) {
-    // Пробуем достать “откуда переслано” максимально безопасно
     const chat = msg.forward_from_chat || msg.forward_origin?.chat;
 
     return {
@@ -232,7 +175,7 @@ function pickPhotoSize(photoArray) {
     const mode = config.media.photoDownloadSize;
     if (mode === "min") return photoArray[0];
     if (mode === "mid") return photoArray[Math.floor(photoArray.length / 2)];
-    return photoArray[photoArray.length - 1]; // max
+    return photoArray[photoArray.length - 1];
 }
 
 async function runWithConcurrency(tasks, limit) {
@@ -273,7 +216,6 @@ async function downloadAllMediaToNoteDir({ bot, msg, noteDir, nameCounters = {} 
                 fileId: photo.file_id,
                 destDir: noteDir,
                 preferredFileName: buildPreferredFileName("photo", photo, nameCounters),
-                // фото часто без нормального имени, оставим serverName
             });
         });
     }
@@ -476,18 +418,16 @@ async function handleAlbum(bot, ctx, items) {
 }
 
 export function registerIngestToNotes(bot) {
-    // Альбом (собран прослойкой)
     bot.on(media_group(), async (ctx) => {
         const items = ctx.update.media_group;
         if (!items?.length) return;
         await handleAlbum(bot, ctx, items);
     });
 
-    // Одиночные сообщения (не альбомы)
     bot.on("message", async (ctx) => {
         const msg = ctx.message;
         if (!msg) return;
-        if (msg.media_group_id) return; // альбом обработает media_group()
+        if (msg.media_group_id) return;
         await handleSingle(bot, ctx, msg);
     });
 }

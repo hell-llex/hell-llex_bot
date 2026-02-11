@@ -1,6 +1,3 @@
-// src/services/noteWriter.js
-// Сервис, который сохраняет заметку в Markdown-файл.
-
 import { promises as fs } from "node:fs";
 import path from "node:path";
 
@@ -9,20 +6,17 @@ function pad2(n) {
 }
 
 function makeTimestamp(d = new Date()) {
-    // YYYY-MM-DD_HH-mm-ss (без двоеточий — дружелюбно к Windows)
     return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}_` +
         `${pad2(d.getHours())}-${pad2(d.getMinutes())}-${pad2(d.getSeconds())}`;
 }
 
 export async function writeNote({ baseDir, text, meta }) {
-    // baseDir например: "/app/data/inbox"
     await fs.mkdir(baseDir, { recursive: true });
 
     const ts = makeTimestamp(new Date());
     const filename = `${ts}.md`;
     const fullPath = path.join(baseDir, filename);
 
-    // Простой frontmatter (потом расширим)
     const fm =
         `---
 source: telegram

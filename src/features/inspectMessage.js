@@ -1,13 +1,3 @@
-// src/features/inspectMessage.js
-//
-// Вариант A: без отдельного сообщения "⏳".
-// Вместо этого показываем индикатор активности через sendChatAction.
-// Итог: пользователь видит только ОДНО сообщение-альбом (mediaGroup) с caption,
-// где в конце будет "✅ Всё готово..." + путь сохранения.
-//
-// Требование: подключён middleware @dietime/telegraf-media-group:
-//   bot.use(new MediaGroup({ timeout: 150 }).middleware())
-
 import { config } from "../config/config.js";
 import { downloadTelegramFile } from "../services/telegramDownload.js";
 import { media_group } from "@dietime/telegraf-media-group";
@@ -50,11 +40,6 @@ function makeTmpKeyForSingle(messageId) {
     return `msg_${messageId}`;
 }
 
-/**
- * Caption для альбома:
- * - сначала текст поста (или "⛔️ Текста нет")
- * - потом статус и инфа
- */
 function buildAlbumCaption({ originalText, infoLines }) {
     const parts = [];
     parts.push(normalizeText(originalText));
@@ -66,17 +51,13 @@ function buildAlbumCaption({ originalText, infoLines }) {
 }
 
 function buildMediaGroupInputs({ albumFiles, caption }) {
-    // Telegram: media group максимум 10 элементов
     return albumFiles.slice(0, 10).map((f, idx) => ({
-        type: f.type, // photo | video
+        type: f.type,
         media: { source: f.filePath },
         ...(idx === 0 && caption ? { caption } : {}),
     }));
 }
 
-/**
- * Пул для параллельных задач с лимитом.
- */
 async function runWithConcurrency(tasks, limit) {
     const results = new Array(tasks.length);
     let nextIndex = 0;
@@ -94,14 +75,9 @@ async function runWithConcurrency(tasks, limit) {
     return results;
 }
 
-/**
- * Скачивает ВСЕ типы медиа из одного сообщения.
- * Возвращает массив { type, filePath }.
- */
 async function downloadAllMediaFromMessage({ bot, msg, tmpDir, tmpKey }) {
     const tasks = [];
 
-    // PHOTO
     if (msg.photo?.length) {
         tasks.push(async () => {
             const photo = pickPhotoSize(msg.photo);
@@ -119,7 +95,6 @@ async function downloadAllMediaFromMessage({ bot, msg, tmpDir, tmpKey }) {
         });
     }
 
-    // VIDEO
     if (msg.video) {
         tasks.push(async () => {
             const { filePath } = await downloadTelegramFile({
@@ -134,7 +109,6 @@ async function downloadAllMediaFromMessage({ bot, msg, tmpDir, tmpKey }) {
         });
     }
 
-    // DOCUMENT (оставляем исходное имя)
     if (msg.document) {
         tasks.push(async () => {
             const { filePath } = await downloadTelegramFile({
@@ -149,7 +123,6 @@ async function downloadAllMediaFromMessage({ bot, msg, tmpDir, tmpKey }) {
         });
     }
 
-    // VOICE
     if (msg.voice) {
         tasks.push(async () => {
             const { filePath } = await downloadTelegramFile({
@@ -164,7 +137,6 @@ async function downloadAllMediaFromMessage({ bot, msg, tmpDir, tmpKey }) {
         });
     }
 
-    // AUDIO
     if (msg.audio) {
         tasks.push(async () => {
             const { filePath } = await downloadTelegramFile({
@@ -179,7 +151,6 @@ async function downloadAllMediaFromMessage({ bot, msg, tmpDir, tmpKey }) {
         });
     }
 
-    // ANIMATION
     if (msg.animation) {
         tasks.push(async () => {
             const { filePath } = await downloadTelegramFile({
@@ -194,7 +165,6 @@ async function downloadAllMediaFromMessage({ bot, msg, tmpDir, tmpKey }) {
         });
     }
 
-    // VIDEO NOTE
     if (msg.video_note) {
         tasks.push(async () => {
             const { filePath } = await downloadTelegramFile({
@@ -209,7 +179,6 @@ async function downloadAllMediaFromMessage({ bot, msg, tmpDir, tmpKey }) {
         });
     }
 
-    // STICKER
     if (msg.sticker) {
         tasks.push(async () => {
             const { filePath } = await downloadTelegramFile({
@@ -232,16 +201,13 @@ async function sendBackDownloadedMedia({ bot, chatId, files, caption }) {
     const album = files.filter((f) => f.type === "photo" || f.type === "video");
     const others = files.filter((f) => f.type !== "photo" && f.type !== "video");
 
-    // 1) Одно сообщение-альбом (photo/video)
     if (album.length) {
         const inputs = buildMediaGroupInputs({ albumFiles: album, caption });
         await bot.telegram.sendMediaGroup(chatId, inputs);
     } else {
-        // Если вдруг нет photo/video — caption некуда повесить
         if (caption) await bot.telegram.sendMessage(chatId, caption);
     }
 
-    // 2) Остальное отдельно (ограничение Bot API)
     for (const f of others) {
         if (f.type === "document") await bot.telegram.sendDocument(chatId, { source: f.filePath });
         else if (f.type === "voice") await bot.telegram.sendVoice(chatId, { source: f.filePath });
@@ -260,7 +226,6 @@ async function processSingleMessage(bot, ctx, msg) {
     const forwarded = isForwarded(msg);
     const originalText = extractText(msg);
 
-    // Для одиночного: просто инфа (без "✅ всё готово" — можно сделать тоже, если хочешь)
     const caption = [
         normalizeText(originalText),
         "",
@@ -270,7 +235,6 @@ async function processSingleMessage(bot, ctx, msg) {
         `↪️ forward: ${forwarded ? "yes" : "no"}`,
     ].join("\n");
 
-    // Можно показать активность
     await ctx.sendChatAction("typing");
 
     const files = await downloadAllMediaFromMessage({ bot, msg, tmpDir, tmpKey });
@@ -284,7 +248,6 @@ async function processSingleMessage(bot, ctx, msg) {
 }
 
 export function registerInspectMessage(bot) {
-    // 1) Готовый альбом (собран прослойкой)
     bot.on(media_group(), async (ctx) => {
         const chatId = ctx.chat.id;
         const tmpDir = config.paths.tmp;
@@ -292,8 +255,6 @@ export function registerInspectMessage(bot) {
         const items = ctx.update.media_group;
         if (!items?.length) return;
 
-        // Показать индикатор (без отдельного сообщения)
-        // "upload_photo" хорошо подходит для альбомов с фото
         await ctx.sendChatAction("typing");
 
         const mediaGroupId = items[0].media_group_id;
@@ -309,10 +270,8 @@ export function registerInspectMessage(bot) {
             `📁 saved: ${config.paths.tmp}/${tmpKey}`,
         ];
 
-        // ✅ статус в конце caption альбома
         const caption = buildAlbumCaption({ originalText, infoLines });
 
-        // Скачиваем параллельно (с лимитом)
         const perMessageTasks = items.map((msg) => () =>
             downloadAllMediaFromMessage({ bot, msg, tmpDir, tmpKey })
         );
@@ -322,12 +281,10 @@ export function registerInspectMessage(bot) {
         await sendBackDownloadedMedia({ bot, chatId, files: allFiles, caption });
     });
 
-    // 2) Одиночные сообщения (не альбомы)
     bot.on("message", async (ctx) => {
         const msg = ctx.message;
         if (!msg) return;
 
-        // Альбомные сообщения обрабатываются media_group()
         if (msg.media_group_id) return;
 
         await processSingleMessage(bot, ctx, msg);
