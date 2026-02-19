@@ -361,9 +361,9 @@ async function handleSingle(bot, ctx, msg) {
         media,
     };
 
-    const { notePath } = await saveIncomingNote(note);
+    await saveIncomingNote(note);
 
-    let replyText = `✅ Saved: ${notePath.replace("/app/data/", "data/")}`;
+    let replyText = `✅ Saved: ${noteId}`;
     if (skipped.length) {
         replyText +=
             "\n⚠️ Файл слишком большой для скачивания. Прикрепите в заметку ссылку для на файл.";
@@ -407,9 +407,9 @@ async function handleAlbum(bot, ctx, items) {
         media,
     };
 
-    const { notePath } = await saveIncomingNote(note);
+    await saveIncomingNote(note);
 
-    let replyText = `✅ Saved: ${notePath.replace("/app/data/", "data/")}`;
+    let replyText = `✅ Saved: ${noteId}`;
     if (skipped.length) {
         replyText +=
             "\n⚠️ Файл слишком большой для скачивания. Прикрепите в заметку ссылку для на файл.";

@@ -1,4 +1,5 @@
 import { writeNote } from "../services/noteWriter.js";
+import { config } from "../config/config.js";
 
 export function registerNote(bot) {
     bot.command("note", async (ctx) => {
@@ -10,7 +11,7 @@ export function registerNote(bot) {
         }
 
         const result = await writeNote({
-            baseDir: "/app/data/inbox",
+            baseDir: config.paths.inboxRoot,
             text,
             meta: {
                 userId: ctx.from?.id,

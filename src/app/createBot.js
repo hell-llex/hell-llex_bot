@@ -9,7 +9,7 @@ import { whitelist } from "../middlewares/whitelist.js";
 import {setupBotCommands} from "./setupBotCommands.js";
 
 export async function createBot() {
-    const env = getEnv();
+    const env = getEnv({ requireBotToken: true });
 
     const bot = new Telegraf(env.BOT_TOKEN);
 
