@@ -1,0 +1,18 @@
+services:
+  hell-llex-bot:
+    image: hell-llex/hell-llex-bot:dev
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hell-llex-bot
+    working_dir: /app
+    env_file:
+      - .env
+    volumes:
+      - ${VAULT_PATH}:/vault
+      - ./:/app
+      - node_modules:/app/node_modules
+    command: sh -lc "npm ci && npm run dev"
+    restart: unless-stopped
+volumes:
+  node_modules:
