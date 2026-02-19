@@ -1,3 +1,11 @@
+{{text}}
+
+## Media
+{{mediaEmbeds}}
+
+## Media files
+{{mediaList}}
+
 ---
 source: telegram
 noteId: {{noteId}}
@@ -13,11 +21,3 @@ forwardFromChatTitle: {{forwardFromChatTitle}}
 forwardFromChatUsername: {{forwardFromChatUsername}}
 forwardFromMessageId: {{forwardFromMessageId}}
 ---
-
-{{text}}
-
-## Media
-{{mediaEmbeds}}
-
-## Media files
-{{mediaList}}
