@@ -333,7 +333,7 @@ async function handleSingle(bot, ctx, msg) {
     await ctx.sendChatAction("typing");
 
     const noteId = `msg_${msg.message_id}`;
-    const noteDir = `${config.paths.inboxRoot}/${noteId}`;
+    const noteDir = `${config.paths.inboxDirForward}/${noteId}`;
     const noteTextMd = normalizeText(extractMarkdownFromMessage(msg));
 
     const forwarded = isForwarded(msg);
@@ -376,7 +376,7 @@ async function handleAlbum(bot, ctx, items) {
 
     const mediaGroupId = items[0].media_group_id;
     const noteId = `mg_${mediaGroupId}`;
-    const noteDir = `${config.paths.inboxRoot}/${noteId}`;
+    const noteDir = `${config.paths.inboxDirForward}/${noteId}`;
 
     const forwarded = items.some(isForwarded);
     const forwardMeta = extractForwardMeta(items.find(isForwarded) || items[0]);
@@ -406,6 +406,8 @@ async function handleAlbum(bot, ctx, items) {
         },
         media,
     };
+
+    console.log('note:', note);
 
     await saveIncomingNote(note);
 
