@@ -407,6 +407,8 @@ async function handleAlbum(bot, ctx, items) {
         media,
     };
 
+    
+    
     console.log('note:', note);
 
     await saveIncomingNote(note);
