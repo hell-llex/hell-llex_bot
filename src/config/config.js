@@ -14,7 +14,8 @@ export const config = {
     paths: {
         dataRoot: env.DATA_ROOT, // Базовый корень данных (используется для относительного отображения путей в ответах бота)
         tmp: env.TMP_DIR, // Временная папка для inspect/download сценариев (src/features/inspectMessage.js)
-        inboxRoot: env.INBOX_DIR, // Куда сохраняются заметки и медиа (src/features/note/*, src/services/noteStore.js)
+        inboxDirNotes: env.INBOX_DIR_NOTES, // Куда сохраняются заметки и медиа (src/features/note/*, src/services/noteStore.js)
+        inboxDirForward: env.INBOX_DIR_FORWARD, // Куда сохраняются заметки и медиа (src/features/note/*, src/services/noteStore.js)
         dataDisplayRoot: env.DATA_DISPLAY_ROOT, // Какой префикс показывать пользователю вместо абсолютного пути (например "data")
     },
 

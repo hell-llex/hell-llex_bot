@@ -5,8 +5,10 @@
   "type": "module",
   "main": "src/main.js",
   "scripts": {
-    "dev": "nodemon --legacy-watch --watch src src/main.js",
-    "start": "node src/main.js",
+    "dev": "nodemon --legacy-watch --watch src --exec \"node --env-file=.env\" src/main.js",
+    "dev:docker": "docker compose -f docker-compose.dev.yml up --build",
+    "dev:docker:down": "docker compose -f docker-compose.dev.yml down",
+    "start": "node --env-file=.env src/main.js",
     "build:image": "node scripts/build-docker-image.mjs"
   },
   "devDependencies": {

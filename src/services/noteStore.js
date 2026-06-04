@@ -36,7 +36,7 @@ function safeYamlValue(v) {
  * @param {Array<{kind:string, fileName:string}>} note.media
  */
 export async function saveIncomingNote(note) {
-    const dir = path.posix.join(config.paths.inboxRoot, note.id);
+    const dir = path.posix.join(config.paths.inboxDirForward, note.id);
 
     await ensureDir(dir);
 

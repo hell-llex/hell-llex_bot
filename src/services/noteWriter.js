@@ -18,7 +18,7 @@ export async function writeNote({ baseDir, text, meta }) {
     const fullPath = path.join(baseDir, filename);
 
     const fm =
-        `---
+`---
 source: telegram
 user_id: ${meta.userId}
 chat_id: ${meta.chatId}

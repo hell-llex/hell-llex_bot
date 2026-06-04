@@ -11,7 +11,7 @@ export function registerNote(bot) {
         }
 
         const result = await writeNote({
-            baseDir: config.paths.inboxRoot,
+            baseDir: config.paths.inboxDirForward,
             text,
             meta: {
                 userId: ctx.from?.id,

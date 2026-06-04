@@ -7,7 +7,7 @@ console.log(
         "▶️ Starting bot",
         `version=${APP_VERSION}`,
         `mode=${config.mode.default}`,
-        `inbox=${config.paths.inboxRoot}`,
+        `inbox=${config.paths.inboxDirForward}`,
     ].join("\n")
 );
 
@@ -20,7 +20,7 @@ try {
             "🚀 Bot started (long polling)",
             `version=${APP_VERSION}`,
             `mode=${config.mode.default}`,
-            `inbox=${config.paths.inboxRoot}`,
+            `inbox=${config.paths.inboxDirForward}`,
         ].join("\n")
     );
 
