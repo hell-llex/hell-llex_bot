@@ -11,12 +11,12 @@ function getArgs(ctx) {
 function helpText() {
     return [
         "Topic routing commands:",
-        "/topic bind admin — bootstrap admin topic",
-        "/topic bind <service> <threadId> — bind topic from admin",
-        "/topic unbind — unbind current topic",
-        "/topic unbind <service> — unbind service",
+        "/topic bind <service> — bind current topic",
         "/topic current — show current topic binding",
+        "/topic bind <service> <threadId> — bind topic from admin",
         "/topic routes — show bindings",
+        "/topic unbind — unbind current topic from admin",
+        "/topic unbind <service> — unbind service from admin",
         "",
         `Built-in services: ${getBuiltInServiceNames().join(", ")}`,
     ].join("\n");
@@ -29,6 +29,7 @@ export function registerTopic(bot) {
         if (!action) return ctx.reply(helpText());
 
         if (action === "routes") {
+            if (!await requireAdminTopic(ctx)) return;
             return ctx.reply(["Configured topic routes:", await formatTopicRoutes()].join("\n"));
         }
 
@@ -48,16 +49,16 @@ export function registerTopic(bot) {
 
         if (action === "bind") {
             if (!service) return ctx.reply("Usage: /topic bind <service>");
-            const bootstrapAdmin = await canBootstrapAdminTopic(service);
-            if (!bootstrapAdmin && !await requireAdminTopic(ctx)) return;
 
             const targetThreadId = parseTargetThreadId(targetThreadIdRaw);
             if (targetThreadIdRaw && targetThreadId === null) {
                 return ctx.reply("threadId должен быть числом. Его можно посмотреть через /whereami или /topic current.");
             }
 
-            if (!bootstrapAdmin && !targetThreadId) {
-                return ctx.reply("Из admin topic укажи threadId: /topic bind notes 123456");
+            const bindsExplicitThread = Boolean(targetThreadId);
+            const bootstrapAdmin = await canBootstrapAdminTopic(service);
+            if (bindsExplicitThread && !bootstrapAdmin && !await requireAdminTopic(ctx)) {
+                return;
             }
 
             let route;

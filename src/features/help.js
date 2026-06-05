@@ -1,5 +1,5 @@
-import { hasAdminTopicBinding, isAdminTopic } from "../services/adminAccess.js";
-import { isTopicRoute } from "../services/topicRouting.js";
+import { isAdminTopic } from "../services/adminAccess.js";
+import { getThreadId, isTopicRoute } from "../services/topicRouting.js";
 
 export function registerHelp(bot) {
     bot.command("help", async (ctx) => {
@@ -13,6 +13,14 @@ export function registerHelp(bot) {
             "/whereami — показать chatId/threadId",
         ];
 
+        const threadId = getThreadId(ctx);
+        if (threadId !== null) {
+            lines.push(
+                "/topic current — показать сервис текущего topic",
+                "/topic bind <service> — привязать текущий topic к сервису"
+            );
+        }
+
         if (await isTopicRoute(ctx, "notes")) {
             lines.push(
                 "",
@@ -22,15 +30,12 @@ export function registerHelp(bot) {
             );
         }
 
-        const showAdminHelp = await isAdminTopic(ctx) || !await hasAdminTopicBinding();
-
-        if (showAdminHelp) {
+        if (await isAdminTopic(ctx)) {
             lines.push(
                 "",
                 "Admin topic:",
-                "/topic bind admin — первично привязать admin topic",
-                "/topic bind <service> <threadId> — привязать topic к сервису",
-                "/topic current — показать сервис текущего topic",
+                "/topic bind admin — привязать текущий topic как admin",
+                "/topic bind <service> <threadId> — привязать topic по threadId",
                 "/topic routes — показать привязки topics",
                 "/topic unbind <service> — отвязать сервис",
                 "/notes dirs — показать папки сохранения заметок",
