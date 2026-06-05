@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { config } from "../config/config.js";
+import { getManualNotesDir } from "./botSettings.js";
 
 async function ensureDir(dirPath) {
     await fs.mkdir(dirPath, { recursive: true });
@@ -35,8 +36,9 @@ function safeYamlValue(v) {
  * @param {string} note.text
  * @param {Array<{kind:string, fileName:string}>} note.media
  */
-export async function saveIncomingNote(note) {
-    const dir = path.posix.join(config.paths.inboxDirForward, note.id);
+export async function saveIncomingNote(note, { baseDir } = {}) {
+    const rootDir = baseDir || await getManualNotesDir();
+    const dir = path.posix.join(rootDir, note.id);
 
     await ensureDir(dir);
 

@@ -2,6 +2,8 @@ import { media_group } from "@dietime/telegraf-media-group";
 import { config } from "../../config/config.js";
 import { downloadTelegramFile } from "../../services/telegramDownload.js";
 import { saveIncomingNote } from "../../services/noteStore.js";
+import { isTopicRoute } from "../../services/topicRouting.js";
+import { getInboxDirForNoteKind } from "../../services/botSettings.js";
 import path from "node:path";
 
 const DOWNLOAD_CONCURRENCY = 4;
@@ -333,10 +335,11 @@ async function handleSingle(bot, ctx, msg) {
     await ctx.sendChatAction("typing");
 
     const noteId = `msg_${msg.message_id}`;
-    const noteDir = `${config.paths.inboxDirForward}/${noteId}`;
+    const forwarded = isForwarded(msg);
+    const inboxDir = await getInboxDirForNoteKind(forwarded ? "forwarded" : "manual");
+    const noteDir = `${inboxDir}/${noteId}`;
     const noteTextMd = normalizeText(extractMarkdownFromMessage(msg));
 
-    const forwarded = isForwarded(msg);
     const forwardMeta = extractForwardMeta(msg);
 
     const nameCounters = {};
@@ -361,7 +364,7 @@ async function handleSingle(bot, ctx, msg) {
         media,
     };
 
-    await saveIncomingNote(note);
+    await saveIncomingNote(note, { baseDir: inboxDir });
 
     let replyText = `✅ Saved: ${noteId}`;
     if (skipped.length) {
@@ -376,9 +379,9 @@ async function handleAlbum(bot, ctx, items) {
 
     const mediaGroupId = items[0].media_group_id;
     const noteId = `mg_${mediaGroupId}`;
-    const noteDir = `${config.paths.inboxDirForward}/${noteId}`;
-
     const forwarded = items.some(isForwarded);
+    const inboxDir = await getInboxDirForNoteKind(forwarded ? "forwarded" : "manual");
+    const noteDir = `${inboxDir}/${noteId}`;
     const forwardMeta = extractForwardMeta(items.find(isForwarded) || items[0]);
 
     const text =
@@ -407,7 +410,7 @@ async function handleAlbum(bot, ctx, items) {
         media,
     };
 
-    await saveIncomingNote(note);
+    await saveIncomingNote(note, { baseDir: inboxDir });
 
     let replyText = `✅ Saved: ${noteId}`;
     if (skipped.length) {
@@ -419,12 +422,16 @@ async function handleAlbum(bot, ctx, items) {
 
 export function registerIngestToNotes(bot) {
     bot.on(media_group(), async (ctx) => {
+        if (!await isTopicRoute(ctx, "notes")) return;
+
         const items = ctx.update.media_group;
         if (!items?.length) return;
         await handleAlbum(bot, ctx, items);
     });
 
     bot.on("message", async (ctx) => {
+        if (!await isTopicRoute(ctx, "notes")) return;
+
         const msg = ctx.message;
         if (!msg) return;
         if (msg.media_group_id) return;
