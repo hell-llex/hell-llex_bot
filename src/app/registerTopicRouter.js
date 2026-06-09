@@ -1,18 +1,19 @@
 import { config } from "../config/config.js";
 import { getThreadId, resolveTopicRoute } from "../services/topicRouting.js";
 import { getService } from "../services/serviceCatalog.js";
+import { hasSupportedUpdateContent, isCommandMessage } from "../services/messageContent.js";
 
 function isMessageUpdate(ctx) {
     return Boolean(ctx.message || ctx.update?.media_group?.length);
 }
 
 function isCommand(ctx) {
-    return Boolean(ctx.message?.text?.startsWith("/"));
+    return isCommandMessage(ctx.message);
 }
 
 export function registerTopicRouter(bot) {
     bot.use(async (ctx, next) => {
-        if (!config.topics.enabled || !isMessageUpdate(ctx) || isCommand(ctx)) {
+        if (!config.topics.enabled || !isMessageUpdate(ctx) || isCommand(ctx) || !hasSupportedUpdateContent(ctx)) {
             return next();
         }
 

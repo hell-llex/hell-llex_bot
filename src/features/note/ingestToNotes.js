@@ -5,6 +5,7 @@ import { saveIncomingNote } from "../../services/noteStore.js";
 import { saveIncomingMemory } from "../../services/memoryStore.js";
 import { isTopicRoute } from "../../services/topicRouting.js";
 import { getInboxDirForNoteKind, getMemoryDir } from "../../services/botSettings.js";
+import { hasSupportedMessageContent, isCommandMessage } from "../../services/messageContent.js";
 import path from "node:path";
 
 const DOWNLOAD_CONCURRENCY = 4;
@@ -434,6 +435,7 @@ function registerIngest(bot, options) {
 
         const items = ctx.update.media_group;
         if (!items?.length) return next();
+        if (!items.some(hasSupportedMessageContent)) return next();
         await handleAlbum(bot, ctx, items, options);
     });
 
@@ -442,6 +444,8 @@ function registerIngest(bot, options) {
 
         const msg = ctx.message;
         if (!msg) return next();
+        if (isCommandMessage(msg)) return next();
+        if (!hasSupportedMessageContent(msg)) return next();
         if (msg.media_group_id) return next();
         await handleSingle(bot, ctx, msg, options);
     });
