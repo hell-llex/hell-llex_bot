@@ -28,6 +28,34 @@ function safeYamlValue(v) {
     return s;
 }
 
+function normalizeTitleText(text) {
+    return String(text || "")
+        .replace(/\[([^\]]+)]\([^)]+\)/g, "$1")
+        .replace(/[`*_~|#>\[\](){}]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+}
+
+function safeFileNamePart(value) {
+    return String(value || "")
+        .replace(/[\\/:*?"<>|]/g, " ")
+        .replace(/[\0\r\n\t]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .replace(/[. ]+$/g, "");
+}
+
+function makeNoteFileName(note) {
+    const title = normalizeTitleText(note.text)
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 5)
+        .join(" ");
+
+    const safeTitle = safeFileNamePart(title) || "no text";
+    return `${safeFileNamePart(note.id)} - ${safeTitle}.md`;
+}
+
 /**
  * @param {object} note
  * @param {string} note.id
@@ -38,9 +66,8 @@ function safeYamlValue(v) {
  */
 export async function saveIncomingNote(note, { baseDir } = {}) {
     const rootDir = baseDir || await getManualNotesDir();
-    const dir = path.posix.join(rootDir, note.id);
 
-    await ensureDir(dir);
+    await ensureDir(rootDir);
 
     const hasMedia = Boolean(note.media?.length);
     let template = await readTemplate();
@@ -76,6 +103,7 @@ export async function saveIncomingNote(note, { baseDir } = {}) {
         forwardFromChatTitle: safeYamlValue(note.source?.forwardFromChatTitle),
         forwardFromChatUsername: safeYamlValue(note.source?.forwardFromChatUsername),
         forwardFromMessageId: safeYamlValue(note.source?.forwardFromMessageId),
+        mode: safeYamlValue(note.mode || "note"),
         text: note.text || "",
         mediaList,
         mediaEmbeds,
@@ -83,8 +111,8 @@ export async function saveIncomingNote(note, { baseDir } = {}) {
 
     const md = renderTemplate(template, vars);
 
-    const notePath = path.posix.join(dir, config.note.fileName);
+    const notePath = path.posix.join(rootDir, makeNoteFileName(note));
     await fs.writeFile(notePath, md, "utf8");
 
-    return { dir, notePath };
+    return { dir: rootDir, notePath };
 }

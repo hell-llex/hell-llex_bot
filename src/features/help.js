@@ -30,6 +30,15 @@ export function registerHelp(bot) {
             );
         }
 
+        if (await isTopicRoute(ctx, "memory")) {
+            lines.push(
+                "",
+                "Memory topic:",
+                "Короткий текст сохраняется в _memory.md.",
+                "Большой текст и медиа сохраняются отдельными Markdown-файлами."
+            );
+        }
+
         if (await isAdminTopic(ctx)) {
             lines.push(
                 "",
@@ -40,7 +49,10 @@ export function registerHelp(bot) {
                 "/topic unbind <service> — отвязать сервис",
                 "/notes dirs — показать папки сохранения заметок",
                 "/notes manual set <path> — папка для своих заметок",
-                "/notes forwarded set <path> — папка для пересланного"
+                "/notes forwarded set <path> — папка для пересланного",
+                "/memory dir — показать папку memory",
+                "/memory dir set <path> — папка для знаний",
+                "/memory storage — показать стратегию хранения"
             );
         }
 
@@ -48,6 +60,7 @@ export function registerHelp(bot) {
             "",
             "Topics:",
             "notes — сохранение заметок и медиа",
+            "memory — сохранение знаний",
             "monitoring — заготовка под мониторинг",
             "alerts — заготовка под алерты",
             "admin — настройки бота"

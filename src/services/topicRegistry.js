@@ -35,15 +35,30 @@ async function readRegistryFile() {
     try {
         const raw = await fs.readFile(config.paths.topicRoutes, "utf8");
         const parsed = JSON.parse(raw);
-        return {
-            ...emptyRegistry(),
-            ...parsed,
-            routes: parsed.routes && typeof parsed.routes === "object" ? parsed.routes : {},
-        };
+        return normalizeRegistry(parsed);
     } catch (err) {
-        if (err.code === "ENOENT") return emptyRegistry();
-        throw err;
+        if (err.code !== "ENOENT") throw err;
     }
+
+    try {
+        const raw = await fs.readFile(config.paths.legacyTopicRoutes, "utf8");
+        const parsed = JSON.parse(raw);
+        const registry = normalizeRegistry(parsed);
+        await writeRegistryFile(registry);
+        return registry;
+    } catch (err) {
+        if (err.code !== "ENOENT") throw err;
+    }
+
+    return emptyRegistry();
+}
+
+function normalizeRegistry(parsed) {
+    return {
+        ...emptyRegistry(),
+        ...parsed,
+        routes: parsed.routes && typeof parsed.routes === "object" ? parsed.routes : {},
+    };
 }
 
 async function writeRegistryFile(registry) {

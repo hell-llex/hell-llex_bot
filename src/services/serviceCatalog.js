@@ -9,6 +9,15 @@ const services = [
         },
     },
     {
+        name: "memory",
+        title: "Memory",
+        status: "active",
+        description: "сохраняет знания: короткие записи в индекс, большие записи и медиа отдельными Markdown-файлами",
+        async handleTopicMessage(ctx, next) {
+            return next();
+        },
+    },
+    {
         name: "monitoring",
         title: "Monitoring",
         status: "planned",

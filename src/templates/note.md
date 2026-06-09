@@ -9,7 +9,7 @@
 ---
 source: telegram
 noteId: {{noteId}}
-mode: note
+mode: {{mode}}
 created: {{createdIso}}
 
 chatId: {{chatId}}

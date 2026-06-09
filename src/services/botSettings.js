@@ -12,6 +12,9 @@ function emptySettings() {
             manualDir: null,
             forwardedDir: null,
         },
+        memory: {
+            dir: null,
+        },
     };
 }
 
@@ -23,19 +26,37 @@ async function readSettingsFile() {
     try {
         const raw = await fs.readFile(config.paths.botSettings, "utf8");
         const parsed = JSON.parse(raw);
-
-        return {
-            ...emptySettings(),
-            ...parsed,
-            notes: {
-                ...emptySettings().notes,
-                ...(parsed.notes || {}),
-            },
-        };
+        return normalizeSettings(parsed);
     } catch (err) {
-        if (err.code === "ENOENT") return emptySettings();
-        throw err;
+        if (err.code !== "ENOENT") throw err;
     }
+
+    try {
+        const raw = await fs.readFile(config.paths.legacyBotSettings, "utf8");
+        const parsed = JSON.parse(raw);
+        const settings = normalizeSettings(parsed);
+        await writeSettingsFile(settings);
+        return settings;
+    } catch (err) {
+        if (err.code !== "ENOENT") throw err;
+    }
+
+    return emptySettings();
+}
+
+function normalizeSettings(parsed) {
+    return {
+        ...emptySettings(),
+        ...parsed,
+        notes: {
+            ...emptySettings().notes,
+            ...(parsed.notes || {}),
+        },
+        memory: {
+            ...emptySettings().memory,
+            ...(parsed.memory || {}),
+        },
+    };
 }
 
 async function writeSettingsFile(settings) {
@@ -88,10 +109,21 @@ export async function getForwardedNotesDir() {
     return settings.notes.forwardedDir || config.paths.inboxDirForward;
 }
 
+export async function getMemoryDir() {
+    const settings = await getBotSettings();
+    return settings.memory.dir || config.paths.inboxDirMemory;
+}
+
 export async function getNotesDirs() {
     return {
         manualDir: await getManualNotesDir(),
         forwardedDir: await getForwardedNotesDir(),
+    };
+}
+
+export async function getMemorySettings() {
+    return {
+        dir: await getMemoryDir(),
     };
 }
 
@@ -142,4 +174,33 @@ export async function resetManualNotesDir() {
 
 export async function resetForwardedNotesDir() {
     return resetNotesDir("forwardedDir", config.paths.inboxDirForward);
+}
+
+export async function setMemoryDir(dir) {
+    const normalizedDir = validateInboxDir(dir);
+    const settings = await getBotSettings();
+
+    await writeSettingsFile({
+        ...settings,
+        memory: {
+            ...settings.memory,
+            dir: normalizedDir,
+        },
+    });
+
+    return normalizedDir;
+}
+
+export async function resetMemoryDir() {
+    const settings = await getBotSettings();
+
+    await writeSettingsFile({
+        ...settings,
+        memory: {
+            ...settings.memory,
+            dir: null,
+        },
+    });
+
+    return config.paths.inboxDirMemory;
 }

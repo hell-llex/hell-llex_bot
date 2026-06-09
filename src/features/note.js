@@ -1,6 +1,6 @@
-import { writeNote } from "../services/noteWriter.js";
 import { isTopicRoute } from "../services/topicRouting.js";
 import { getManualNotesDir } from "../services/botSettings.js";
+import { saveIncomingNote } from "../services/noteStore.js";
 
 export function registerNote(bot) {
     bot.command("note", async (ctx) => {
@@ -16,15 +16,20 @@ export function registerNote(bot) {
         }
 
         const inboxDir = await getManualNotesDir();
-        const result = await writeNote({
-            baseDir: inboxDir,
+        const note = {
+            id: `msg_${ctx.message.message_id}`,
+            createdAt: new Date((ctx.message.date || Math.floor(Date.now() / 1000)) * 1000),
             text,
-            meta: {
-                userId: ctx.from?.id,
+            source: {
                 chatId: ctx.chat?.id,
+                fromId: ctx.from?.id,
+                username: ctx.from?.username || "",
+                forwarded: false,
             },
-        });
+            media: [],
+        };
 
-        await ctx.reply(`✅ Сохранил в inbox: ${result.filename}\n${inboxDir}`);
+        const result = await saveIncomingNote(note, { baseDir: inboxDir });
+        await ctx.reply(`✅ Сохранил в inbox:\n${result.notePath}`);
     });
 }

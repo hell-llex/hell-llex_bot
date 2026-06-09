@@ -2,8 +2,9 @@ import { media_group } from "@dietime/telegraf-media-group";
 import { config } from "../../config/config.js";
 import { downloadTelegramFile } from "../../services/telegramDownload.js";
 import { saveIncomingNote } from "../../services/noteStore.js";
+import { saveIncomingMemory } from "../../services/memoryStore.js";
 import { isTopicRoute } from "../../services/topicRouting.js";
-import { getInboxDirForNoteKind } from "../../services/botSettings.js";
+import { getInboxDirForNoteKind, getMemoryDir } from "../../services/botSettings.js";
 import path from "node:path";
 
 const DOWNLOAD_CONCURRENCY = 4;
@@ -52,11 +53,11 @@ function pickExtension(kind, file) {
     }
 }
 
-function buildPreferredFileName(kind, file, counters) {
+function buildPreferredFileName(noteId, kind, file, counters) {
     counters[kind] = (counters[kind] || 0) + 1;
     const index = String(counters[kind]).padStart(3, "0");
     const ext = pickExtension(kind, file);
-    return `${kind}_${index}${ext}`;
+    return `${noteId}_${kind}_${index}${ext}`;
 }
 
 
@@ -197,7 +198,7 @@ async function runWithConcurrency(tasks, limit) {
     return results;
 }
 
-async function downloadAllMediaToNoteDir({ bot, msg, noteDir, nameCounters = {} }) {
+async function downloadAllMediaToNoteDir({ bot, msg, noteDir, noteId, nameCounters = {} }) {
     const tasks = [];
     const skipped = [];
     const download = async (kind, params) => {
@@ -217,7 +218,7 @@ async function downloadAllMediaToNoteDir({ bot, msg, noteDir, nameCounters = {} 
                 bot,
                 fileId: photo.file_id,
                 destDir: noteDir,
-                preferredFileName: buildPreferredFileName("photo", photo, nameCounters),
+                preferredFileName: buildPreferredFileName(noteId, "photo", photo, nameCounters),
             });
         });
     }
@@ -232,7 +233,7 @@ async function downloadAllMediaToNoteDir({ bot, msg, noteDir, nameCounters = {} 
                 bot,
                 fileId: msg.video.file_id,
                 destDir: noteDir,
-                preferredFileName: buildPreferredFileName("video", msg.video, nameCounters),
+                preferredFileName: buildPreferredFileName(noteId, "video", msg.video, nameCounters),
             });
         });
     }
@@ -247,7 +248,7 @@ async function downloadAllMediaToNoteDir({ bot, msg, noteDir, nameCounters = {} 
                 bot,
                 fileId: msg.document.file_id,
                 destDir: noteDir,
-                preferredFileName: buildPreferredFileName("document", msg.document, nameCounters),
+                preferredFileName: buildPreferredFileName(noteId, "document", msg.document, nameCounters),
             });
         });
     }
@@ -262,7 +263,7 @@ async function downloadAllMediaToNoteDir({ bot, msg, noteDir, nameCounters = {} 
                 bot,
                 fileId: msg.voice.file_id,
                 destDir: noteDir,
-                preferredFileName: buildPreferredFileName("voice", msg.voice, nameCounters),
+                preferredFileName: buildPreferredFileName(noteId, "voice", msg.voice, nameCounters),
             });
         });
     }
@@ -277,7 +278,7 @@ async function downloadAllMediaToNoteDir({ bot, msg, noteDir, nameCounters = {} 
                 bot,
                 fileId: msg.audio.file_id,
                 destDir: noteDir,
-                preferredFileName: buildPreferredFileName("audio", msg.audio, nameCounters),
+                preferredFileName: buildPreferredFileName(noteId, "audio", msg.audio, nameCounters),
             });
         });
     }
@@ -292,7 +293,7 @@ async function downloadAllMediaToNoteDir({ bot, msg, noteDir, nameCounters = {} 
                 bot,
                 fileId: msg.animation.file_id,
                 destDir: noteDir,
-                preferredFileName: buildPreferredFileName("animation", msg.animation, nameCounters),
+                preferredFileName: buildPreferredFileName(noteId, "animation", msg.animation, nameCounters),
             });
         });
     }
@@ -307,7 +308,7 @@ async function downloadAllMediaToNoteDir({ bot, msg, noteDir, nameCounters = {} 
                 bot,
                 fileId: msg.video_note.file_id,
                 destDir: noteDir,
-                preferredFileName: buildPreferredFileName("video_note", msg.video_note, nameCounters),
+                preferredFileName: buildPreferredFileName(noteId, "video_note", msg.video_note, nameCounters),
             });
         });
     }
@@ -322,7 +323,7 @@ async function downloadAllMediaToNoteDir({ bot, msg, noteDir, nameCounters = {} 
                 bot,
                 fileId: msg.sticker.file_id,
                 destDir: noteDir,
-                preferredFileName: buildPreferredFileName("sticker", msg.sticker, nameCounters),
+                preferredFileName: buildPreferredFileName(noteId, "sticker", msg.sticker, nameCounters),
             });
         });
     }
@@ -331,13 +332,13 @@ async function downloadAllMediaToNoteDir({ bot, msg, noteDir, nameCounters = {} 
     return { media: results.filter(Boolean), skipped };
 }
 
-async function handleSingle(bot, ctx, msg) {
+async function handleSingle(bot, ctx, msg, options) {
     await ctx.sendChatAction("typing");
 
     const noteId = `msg_${msg.message_id}`;
     const forwarded = isForwarded(msg);
-    const inboxDir = await getInboxDirForNoteKind(forwarded ? "forwarded" : "manual");
-    const noteDir = `${inboxDir}/${noteId}`;
+    const inboxDir = await options.getInboxDir({ forwarded });
+    const noteDir = inboxDir;
     const noteTextMd = normalizeText(extractMarkdownFromMessage(msg));
 
     const forwardMeta = extractForwardMeta(msg);
@@ -347,6 +348,7 @@ async function handleSingle(bot, ctx, msg) {
         bot,
         msg,
         noteDir,
+        noteId,
         nameCounters,
     });
 
@@ -364,9 +366,12 @@ async function handleSingle(bot, ctx, msg) {
         media,
     };
 
-    await saveIncomingNote(note, { baseDir: inboxDir });
+    const saved = await options.saveIncoming(note, { baseDir: inboxDir });
 
-    let replyText = `✅ Saved: ${noteId}`;
+    let replyText = `✅ Saved ${options.label}: ${noteId}`;
+    if (saved.storage) {
+        replyText += `\nstorage: ${saved.storage}`;
+    }
     if (skipped.length) {
         replyText +=
             "\n⚠️ Файл слишком большой для скачивания. Прикрепите в заметку ссылку для на файл.";
@@ -374,14 +379,14 @@ async function handleSingle(bot, ctx, msg) {
     await ctx.reply(replyText);
 }
 
-async function handleAlbum(bot, ctx, items) {
+async function handleAlbum(bot, ctx, items, options) {
     await ctx.sendChatAction("typing");
 
     const mediaGroupId = items[0].media_group_id;
     const noteId = `mg_${mediaGroupId}`;
     const forwarded = items.some(isForwarded);
-    const inboxDir = await getInboxDirForNoteKind(forwarded ? "forwarded" : "manual");
-    const noteDir = `${inboxDir}/${noteId}`;
+    const inboxDir = await options.getInboxDir({ forwarded });
+    const noteDir = inboxDir;
     const forwardMeta = extractForwardMeta(items.find(isForwarded) || items[0]);
 
     const text =
@@ -390,7 +395,7 @@ async function handleAlbum(bot, ctx, items) {
     // качаем все медиа всех элементов альбома
     const nameCounters = {};
     const perMsgTasks = items.map((m) => () =>
-        downloadAllMediaToNoteDir({ bot, msg: m, noteDir, nameCounters })
+        downloadAllMediaToNoteDir({ bot, msg: m, noteDir, noteId, nameCounters })
     );
     const perMsgMedia = await runWithConcurrency(perMsgTasks, DOWNLOAD_CONCURRENCY);
     const media = perMsgMedia.flatMap((r) => r.media);
@@ -410,9 +415,12 @@ async function handleAlbum(bot, ctx, items) {
         media,
     };
 
-    await saveIncomingNote(note, { baseDir: inboxDir });
+    const saved = await options.saveIncoming(note, { baseDir: inboxDir });
 
-    let replyText = `✅ Saved: ${noteId}`;
+    let replyText = `✅ Saved ${options.label}: ${noteId}`;
+    if (saved.storage) {
+        replyText += `\nstorage: ${saved.storage}`;
+    }
     if (skipped.length) {
         replyText +=
             "\n⚠️ Файл слишком большой для скачивания. Прикрепите в заметку ссылку для на файл.";
@@ -420,21 +428,39 @@ async function handleAlbum(bot, ctx, items) {
     await ctx.reply(replyText);
 }
 
-export function registerIngestToNotes(bot) {
-    bot.on(media_group(), async (ctx) => {
-        if (!await isTopicRoute(ctx, "notes")) return;
+function registerIngest(bot, options) {
+    bot.on(media_group(), async (ctx, next) => {
+        if (!await isTopicRoute(ctx, options.routeName)) return next();
 
         const items = ctx.update.media_group;
-        if (!items?.length) return;
-        await handleAlbum(bot, ctx, items);
+        if (!items?.length) return next();
+        await handleAlbum(bot, ctx, items, options);
     });
 
-    bot.on("message", async (ctx) => {
-        if (!await isTopicRoute(ctx, "notes")) return;
+    bot.on("message", async (ctx, next) => {
+        if (!await isTopicRoute(ctx, options.routeName)) return next();
 
         const msg = ctx.message;
-        if (!msg) return;
-        if (msg.media_group_id) return;
-        await handleSingle(bot, ctx, msg);
+        if (!msg) return next();
+        if (msg.media_group_id) return next();
+        await handleSingle(bot, ctx, msg, options);
+    });
+}
+
+export function registerIngestToNotes(bot) {
+    registerIngest(bot, {
+        routeName: "notes",
+        label: "note",
+        getInboxDir: ({ forwarded }) => getInboxDirForNoteKind(forwarded ? "forwarded" : "manual"),
+        saveIncoming: saveIncomingNote,
+    });
+}
+
+export function registerIngestToMemory(bot) {
+    registerIngest(bot, {
+        routeName: "memory",
+        label: "memory",
+        getInboxDir: () => getMemoryDir(),
+        saveIncoming: saveIncomingMemory,
     });
 }
