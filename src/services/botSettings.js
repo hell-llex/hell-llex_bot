@@ -15,6 +15,9 @@ function emptySettings() {
         memory: {
             dir: null,
         },
+        cleanup: {
+            deleteAfterSeconds: null,
+        },
     };
 }
 
@@ -55,6 +58,10 @@ function normalizeSettings(parsed) {
         memory: {
             ...emptySettings().memory,
             ...(parsed.memory || {}),
+        },
+        cleanup: {
+            ...emptySettings().cleanup,
+            ...(parsed.cleanup || {}),
         },
     };
 }
@@ -127,8 +134,25 @@ export async function getMemorySettings() {
     };
 }
 
+export async function getCleanupSettings() {
+    const settings = await getBotSettings();
+    return {
+        deleteAfterSeconds: settings.cleanup.deleteAfterSeconds ?? config.cleanup.autoDeleteAfterSeconds,
+    };
+}
+
 export async function getInboxDirForNoteKind(kind) {
     return kind === "forwarded" ? await getForwardedNotesDir() : await getManualNotesDir();
+}
+
+export function validateCleanupSeconds(value) {
+    const n = Number(value);
+
+    if (!Number.isFinite(n) || n < 0) {
+        throw new Error("Cleanup seconds must be a non-negative number.");
+    }
+
+    return Math.floor(n);
 }
 
 async function setNotesDir(key, dir) {
@@ -203,4 +227,33 @@ export async function resetMemoryDir() {
     });
 
     return config.paths.inboxDirMemory;
+}
+
+export async function setCleanupDeleteAfterSeconds(seconds) {
+    const normalizedSeconds = validateCleanupSeconds(seconds);
+    const settings = await getBotSettings();
+
+    await writeSettingsFile({
+        ...settings,
+        cleanup: {
+            ...settings.cleanup,
+            deleteAfterSeconds: normalizedSeconds,
+        },
+    });
+
+    return normalizedSeconds;
+}
+
+export async function resetCleanupDeleteAfterSeconds() {
+    const settings = await getBotSettings();
+
+    await writeSettingsFile({
+        ...settings,
+        cleanup: {
+            ...settings.cleanup,
+            deleteAfterSeconds: null,
+        },
+    });
+
+    return config.cleanup.autoDeleteAfterSeconds;
 }

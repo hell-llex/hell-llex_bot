@@ -28,7 +28,7 @@ function safeYamlValue(v) {
     return s;
 }
 
-function normalizeTitleText(text) {
+export function normalizeTitleText(text) {
     return String(text || "")
         .replace(/\[([^\]]+)]\([^)]+\)/g, "$1")
         .replace(/[`*_~|#>\[\](){}]/g, " ")
@@ -36,7 +36,7 @@ function normalizeTitleText(text) {
         .trim();
 }
 
-function safeFileNamePart(value) {
+export function safeFileNamePart(value) {
     return String(value || "")
         .replace(/[\\/:*?"<>|]/g, " ")
         .replace(/[\0\r\n\t]/g, " ")
@@ -45,7 +45,12 @@ function safeFileNamePart(value) {
         .replace(/[. ]+$/g, "");
 }
 
-function makeNoteFileName(note) {
+export function getNoteDisplayId(noteId) {
+    const raw = String(noteId || "").trim();
+    return raw.replace(/^(msg|mg)_/i, "") || "unknown";
+}
+
+export function makeNoteBaseName(note) {
     const title = normalizeTitleText(note.text)
         .split(/\s+/)
         .filter(Boolean)
@@ -53,7 +58,11 @@ function makeNoteFileName(note) {
         .join(" ");
 
     const safeTitle = safeFileNamePart(title) || "no text";
-    return `${safeFileNamePart(note.id)} - ${safeTitle}.md`;
+    return `(${safeFileNamePart(getNoteDisplayId(note.id))}) - ${safeTitle}`;
+}
+
+function makeNoteFileName(note) {
+    return `${makeNoteBaseName(note)}.md`;
 }
 
 /**
@@ -79,15 +88,15 @@ export async function saveIncomingNote(note, { baseDir } = {}) {
     }
 
     const mediaList =
-        hasMedia ? note.media.map((m) => `- ${m.fileName}`).join("\n") : "";
+        hasMedia ? note.media.map((m) => `- ${m.linkPath || m.fileName}`).join("\n") : "";
 
     const mediaEmbeds =
         hasMedia
             ? note.media
                 .map((m) => {
-                    const name = m.fileName;
-                    if (m.kind === "document") return `[${name}](${name})`;
-                    return `![${name}](${name})`;
+                    const linkPath = m.linkPath || m.fileName;
+                    if (m.kind === "document") return `[[${linkPath}]]`;
+                    return `![[${linkPath}]]`;
                 })
                 .join("\n")
             : "";

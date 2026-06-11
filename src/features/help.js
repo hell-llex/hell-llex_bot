@@ -52,7 +52,10 @@ export function registerHelp(bot) {
                 "/notes forwarded set <path> — папка для пересланного",
                 "/memory dir — показать папку memory",
                 "/memory dir set <path> — папка для знаний",
-                "/memory storage — показать стратегию хранения"
+                "/memory storage — показать стратегию хранения",
+                "/cleanup status — показать автоудаление сообщений",
+                "/cleanup set <duration> — изменить TTL, например 30m или 2h",
+                "/cleanup off — отключить автоудаление"
             );
         }
 

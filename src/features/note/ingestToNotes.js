@@ -1,7 +1,7 @@
 import { media_group } from "@dietime/telegraf-media-group";
 import { config } from "../../config/config.js";
 import { downloadTelegramFile } from "../../services/telegramDownload.js";
-import { saveIncomingNote } from "../../services/noteStore.js";
+import { makeNoteBaseName, safeFileNamePart, saveIncomingNote } from "../../services/noteStore.js";
 import { saveIncomingMemory } from "../../services/memoryStore.js";
 import { isTopicRoute } from "../../services/topicRouting.js";
 import { getInboxDirForNoteKind, getMemoryDir } from "../../services/botSettings.js";
@@ -54,11 +54,11 @@ function pickExtension(kind, file) {
     }
 }
 
-function buildPreferredFileName(noteId, kind, file, counters) {
+function buildPreferredFileName(baseName, kind, file, counters) {
     counters[kind] = (counters[kind] || 0) + 1;
     const index = String(counters[kind]).padStart(3, "0");
     const ext = pickExtension(kind, file);
-    return `${noteId}_${kind}_${index}${ext}`;
+    return `${safeFileNamePart(baseName)} - ${kind} ${index}${ext}`;
 }
 
 
@@ -199,13 +199,19 @@ async function runWithConcurrency(tasks, limit) {
     return results;
 }
 
-async function downloadAllMediaToNoteDir({ bot, msg, noteDir, noteId, nameCounters = {} }) {
+function getMediaLinkPath(fileName) {
+    const relative = path.posix.relative(config.paths.dataRoot, config.paths.mediaAssetsDir);
+    if (!relative || relative.startsWith("..")) return fileName;
+    return path.posix.join(relative, fileName);
+}
+
+async function downloadAllMediaToAssetsDir({ bot, msg, baseName, nameCounters = {} }) {
     const tasks = [];
     const skipped = [];
     const download = async (kind, params) => {
         const result = await downloadTelegramFile(params);
         if (!result) return null;
-        return { kind, fileName: result.fileName };
+        return { kind, fileName: result.fileName, linkPath: getMediaLinkPath(result.fileName) };
     };
 
     if (msg.photo?.length) {
@@ -218,8 +224,8 @@ async function downloadAllMediaToNoteDir({ bot, msg, noteDir, noteId, nameCounte
             return download("photo", {
                 bot,
                 fileId: photo.file_id,
-                destDir: noteDir,
-                preferredFileName: buildPreferredFileName(noteId, "photo", photo, nameCounters),
+                destDir: config.paths.mediaAssetsDir,
+                preferredFileName: buildPreferredFileName(baseName, "photo", photo, nameCounters),
             });
         });
     }
@@ -233,8 +239,8 @@ async function downloadAllMediaToNoteDir({ bot, msg, noteDir, noteId, nameCounte
             return download("video", {
                 bot,
                 fileId: msg.video.file_id,
-                destDir: noteDir,
-                preferredFileName: buildPreferredFileName(noteId, "video", msg.video, nameCounters),
+                destDir: config.paths.mediaAssetsDir,
+                preferredFileName: buildPreferredFileName(baseName, "video", msg.video, nameCounters),
             });
         });
     }
@@ -248,8 +254,8 @@ async function downloadAllMediaToNoteDir({ bot, msg, noteDir, noteId, nameCounte
             return download("document", {
                 bot,
                 fileId: msg.document.file_id,
-                destDir: noteDir,
-                preferredFileName: buildPreferredFileName(noteId, "document", msg.document, nameCounters),
+                destDir: config.paths.mediaAssetsDir,
+                preferredFileName: buildPreferredFileName(baseName, "document", msg.document, nameCounters),
             });
         });
     }
@@ -263,8 +269,8 @@ async function downloadAllMediaToNoteDir({ bot, msg, noteDir, noteId, nameCounte
             return download("voice", {
                 bot,
                 fileId: msg.voice.file_id,
-                destDir: noteDir,
-                preferredFileName: buildPreferredFileName(noteId, "voice", msg.voice, nameCounters),
+                destDir: config.paths.mediaAssetsDir,
+                preferredFileName: buildPreferredFileName(baseName, "voice", msg.voice, nameCounters),
             });
         });
     }
@@ -278,8 +284,8 @@ async function downloadAllMediaToNoteDir({ bot, msg, noteDir, noteId, nameCounte
             return download("audio", {
                 bot,
                 fileId: msg.audio.file_id,
-                destDir: noteDir,
-                preferredFileName: buildPreferredFileName(noteId, "audio", msg.audio, nameCounters),
+                destDir: config.paths.mediaAssetsDir,
+                preferredFileName: buildPreferredFileName(baseName, "audio", msg.audio, nameCounters),
             });
         });
     }
@@ -293,8 +299,8 @@ async function downloadAllMediaToNoteDir({ bot, msg, noteDir, noteId, nameCounte
             return download("animation", {
                 bot,
                 fileId: msg.animation.file_id,
-                destDir: noteDir,
-                preferredFileName: buildPreferredFileName(noteId, "animation", msg.animation, nameCounters),
+                destDir: config.paths.mediaAssetsDir,
+                preferredFileName: buildPreferredFileName(baseName, "animation", msg.animation, nameCounters),
             });
         });
     }
@@ -308,8 +314,8 @@ async function downloadAllMediaToNoteDir({ bot, msg, noteDir, noteId, nameCounte
             return download("video_note", {
                 bot,
                 fileId: msg.video_note.file_id,
-                destDir: noteDir,
-                preferredFileName: buildPreferredFileName(noteId, "video_note", msg.video_note, nameCounters),
+                destDir: config.paths.mediaAssetsDir,
+                preferredFileName: buildPreferredFileName(baseName, "video_note", msg.video_note, nameCounters),
             });
         });
     }
@@ -323,8 +329,8 @@ async function downloadAllMediaToNoteDir({ bot, msg, noteDir, noteId, nameCounte
             return download("sticker", {
                 bot,
                 fileId: msg.sticker.file_id,
-                destDir: noteDir,
-                preferredFileName: buildPreferredFileName(noteId, "sticker", msg.sticker, nameCounters),
+                destDir: config.paths.mediaAssetsDir,
+                preferredFileName: buildPreferredFileName(baseName, "sticker", msg.sticker, nameCounters),
             });
         });
     }
@@ -339,17 +345,16 @@ async function handleSingle(bot, ctx, msg, options) {
     const noteId = `msg_${msg.message_id}`;
     const forwarded = isForwarded(msg);
     const inboxDir = await options.getInboxDir({ forwarded });
-    const noteDir = inboxDir;
     const noteTextMd = normalizeText(extractMarkdownFromMessage(msg));
+    const baseName = makeNoteBaseName({ id: noteId, text: noteTextMd });
 
     const forwardMeta = extractForwardMeta(msg);
 
     const nameCounters = {};
-    const { media, skipped } = await downloadAllMediaToNoteDir({
+    const { media, skipped } = await downloadAllMediaToAssetsDir({
         bot,
         msg,
-        noteDir,
-        noteId,
+        baseName,
         nameCounters,
     });
 
@@ -387,16 +392,18 @@ async function handleAlbum(bot, ctx, items, options) {
     const noteId = `mg_${mediaGroupId}`;
     const forwarded = items.some(isForwarded);
     const inboxDir = await options.getInboxDir({ forwarded });
-    const noteDir = inboxDir;
     const forwardMeta = extractForwardMeta(items.find(isForwarded) || items[0]);
 
     const text =
         items.map(extractMarkdownFromMessage).find((t) => (t || "").trim()) || "";
 
+    const noteTextMd = normalizeText(text);
+    const baseName = makeNoteBaseName({ id: noteId, text: noteTextMd });
+
     // качаем все медиа всех элементов альбома
     const nameCounters = {};
     const perMsgTasks = items.map((m) => () =>
-        downloadAllMediaToNoteDir({ bot, msg: m, noteDir, noteId, nameCounters })
+        downloadAllMediaToAssetsDir({ bot, msg: m, baseName, nameCounters })
     );
     const perMsgMedia = await runWithConcurrency(perMsgTasks, DOWNLOAD_CONCURRENCY);
     const media = perMsgMedia.flatMap((r) => r.media);
@@ -405,7 +412,7 @@ async function handleAlbum(bot, ctx, items, options) {
     const note = {
         id: noteId,
         createdAt: new Date((items[0].date || Math.floor(Date.now() / 1000)) * 1000),
-        text: normalizeText(text),
+        text: noteTextMd,
         source: {
             chatId: ctx.chat?.id,
             fromId: ctx.from?.id,

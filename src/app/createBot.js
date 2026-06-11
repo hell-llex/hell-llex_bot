@@ -7,6 +7,7 @@ import { errorHandler } from "../middlewares/errorHandler.js";
 import { logger } from "../middlewares/logger.js";
 import { whitelist } from "../middlewares/whitelist.js";
 import {setupBotCommands} from "./setupBotCommands.js";
+import { messageCleanup } from "../services/messageCleanup.js";
 
 export async function createBot() {
     const env = getEnv({ requireBotToken: true });
@@ -16,6 +17,7 @@ export async function createBot() {
     bot.use(errorHandler());
     bot.use(logger());
     bot.use(whitelist(env));
+    bot.use(messageCleanup(bot));
     bot.use(new MediaGroup({ timeout: config.mediaGroup.timeoutDebounce }).middleware());
 
     await registerHandlers(bot, env);

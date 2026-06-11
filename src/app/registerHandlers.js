@@ -9,6 +9,7 @@ import {registerTopic} from "../features/topic.js";
 import {registerServices} from "../features/services.js";
 import {registerNotesSettings} from "../features/notesSettings.js";
 import {registerMemorySettings} from "../features/memorySettings.js";
+import {registerCleanupSettings} from "../features/cleanupSettings.js";
 
 export async function registerHandlers(bot, env) {
     registerStart(bot, env);
@@ -19,6 +20,7 @@ export async function registerHandlers(bot, env) {
     registerTopic(bot, env);
     registerNotesSettings(bot, env);
     registerMemorySettings(bot, env);
+    registerCleanupSettings(bot, env);
     registerNote(bot, env);
     registerTopicRouter(bot, env);
     await registerModeHandlers(bot, env);

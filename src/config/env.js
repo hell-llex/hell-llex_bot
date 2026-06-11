@@ -23,6 +23,12 @@ function normalizePhotoSizeMode(value) {
     return "min";
 }
 
+function normalizePositiveSeconds(value, fallback) {
+    const n = Number(value);
+    if (!Number.isFinite(n) || n < 0) return fallback;
+    return Math.floor(n);
+}
+
 export function getEnv({ requireBotToken = false } = {}) {
     const BOT_TOKEN = process.env.BOT_TOKEN;
     const ADMIN_USER_ID = toInt(process.env.ADMIN_USER_ID || "0", 0);
@@ -32,6 +38,7 @@ export function getEnv({ requireBotToken = false } = {}) {
     const INBOX_DIR_NOTES = process.env.INBOX_DIR_NOTES || `${DATA_ROOT}/Notes`;
     const INBOX_DIR_FORWARD = process.env.INBOX_DIR_FORWARD || `${DATA_ROOT}/Telegram`;
     const INBOX_DIR_MEMORY = process.env.INBOX_DIR_MEMORY || `${DATA_ROOT}/Memory`;
+    const MEDIA_ASSETS_DIR = process.env.MEDIA_ASSETS_DIR || `${DATA_ROOT}/system_file/assets/media`;
     const BOT_INTERNAL_DIR = process.env.BOT_INTERNAL_DIR || `${path.posix.dirname(INBOX_DIR_FORWARD)}/.bot`;
     const TOPIC_ROUTES_PATH = process.env.TOPIC_ROUTES_PATH || `${BOT_INTERNAL_DIR}/topic-routes.json`;
     const BOT_SETTINGS_PATH = process.env.BOT_SETTINGS_PATH || `${BOT_INTERNAL_DIR}/settings.json`;
@@ -41,6 +48,7 @@ export function getEnv({ requireBotToken = false } = {}) {
     const TMP_DIR = process.env.TMP_DIR || `${DATA_ROOT}/tmp`;
     const DATA_DISPLAY_ROOT = process.env.DATA_DISPLAY_ROOT || "data";
     const PHOTO_DOWNLOAD_SIZE = normalizePhotoSizeMode(process.env.PHOTO_DOWNLOAD_SIZE || "min");
+    const AUTO_DELETE_AFTER_SECONDS = normalizePositiveSeconds(process.env.AUTO_DELETE_AFTER_SECONDS, 30 * 60);
 
     const TOPICS_ENABLED = toBool(process.env.TOPICS_ENABLED, false);
     const TOPIC_NOTES_THREAD_ID = toOptionalInt(process.env.TOPIC_NOTES_THREAD_ID);
@@ -63,6 +71,7 @@ export function getEnv({ requireBotToken = false } = {}) {
         INBOX_DIR_NOTES,
         INBOX_DIR_FORWARD,
         INBOX_DIR_MEMORY,
+        MEDIA_ASSETS_DIR,
         BOT_INTERNAL_DIR,
         TOPIC_ROUTES_PATH,
         BOT_SETTINGS_PATH,
@@ -74,5 +83,6 @@ export function getEnv({ requireBotToken = false } = {}) {
         TOPIC_MONITORING_THREAD_ID,
         TOPIC_ALERTS_THREAD_ID,
         TOPIC_ADMIN_THREAD_ID,
+        AUTO_DELETE_AFTER_SECONDS,
     };
 }
