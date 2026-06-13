@@ -2,12 +2,6 @@ import { getCleanupSettings } from "./botSettings.js";
 
 const MAX_TIMEOUT_MS = 2_147_483_647;
 
-function getUpdateMessages(ctx) {
-    if (ctx.update?.media_group?.length) return ctx.update.media_group;
-    if (ctx.message) return [ctx.message];
-    return [];
-}
-
 function scheduleDelete(bot, chatId, messageId, seconds) {
     if (!chatId || !messageId || !seconds) return;
 
@@ -31,23 +25,14 @@ export async function scheduleMessageCleanup(bot, ctx, message) {
     scheduleDelete(bot, ctx.chat?.id || message?.chat?.id, message.message_id, deleteAfterSeconds);
 }
 
-export function messageCleanup(bot) {
-    return async (ctx, next) => {
-        const originalReply = ctx.reply.bind(ctx);
+export async function scheduleMessagesCleanup(bot, ctx, messages) {
+    for (const message of messages.filter(Boolean)) {
+        await scheduleMessageCleanup(bot, ctx, message);
+    }
+}
 
-        ctx.reply = async (...args) => {
-            const sent = await originalReply(...args);
-            if (sent?.message_id) await scheduleMessageCleanup(bot, ctx, sent);
-            return sent;
-        };
-
-        try {
-            await next();
-        } finally {
-            const messages = getUpdateMessages(ctx);
-            for (const message of messages) {
-                await scheduleMessageCleanup(bot, ctx, message);
-            }
-        }
-    };
+export async function replyWithCleanup(bot, ctx, text, incomingMessages = [], extra = undefined) {
+    const sent = await ctx.reply(text, extra);
+    await scheduleMessagesCleanup(bot, ctx, [...incomingMessages, sent]);
+    return sent;
 }

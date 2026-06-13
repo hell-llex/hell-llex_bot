@@ -1,6 +1,7 @@
 import { isTopicRoute } from "../services/topicRouting.js";
 import { getManualNotesDir } from "../services/botSettings.js";
 import { saveIncomingNote } from "../services/noteStore.js";
+import { replyWithCleanup } from "../services/messageCleanup.js";
 
 export function registerNote(bot) {
     bot.command("note", async (ctx) => {
@@ -30,6 +31,6 @@ export function registerNote(bot) {
         };
 
         const result = await saveIncomingNote(note, { baseDir: inboxDir });
-        await ctx.reply(`✅ Сохранил в inbox:\n${result.notePath}`);
+        await replyWithCleanup(bot, ctx, `✅ Сохранено note: ${result.noteName}`, [ctx.message]);
     });
 }

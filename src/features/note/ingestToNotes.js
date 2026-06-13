@@ -6,6 +6,7 @@ import { saveIncomingMemory } from "../../services/memoryStore.js";
 import { isTopicRoute } from "../../services/topicRouting.js";
 import { getInboxDirForNoteKind, getMemoryDir } from "../../services/botSettings.js";
 import { hasSupportedMessageContent, isCommandMessage } from "../../services/messageContent.js";
+import { replyWithCleanup } from "../../services/messageCleanup.js";
 import path from "node:path";
 
 const DOWNLOAD_CONCURRENCY = 4;
@@ -339,6 +340,18 @@ async function downloadAllMediaToAssetsDir({ bot, msg, baseName, nameCounters = 
     return { media: results.filter(Boolean), skipped };
 }
 
+function buildSavedReplyText(options, saved, skipped) {
+    let replyText = `✅ Сохранено ${options.label}: ${saved.noteName || saved.fileName || saved.notePath}`;
+    if (saved.storage) {
+        replyText += `\nstorage: ${saved.storage}`;
+    }
+    if (skipped.length) {
+        replyText +=
+            "\n⚠️ Файл слишком большой для скачивания. Прикрепите в заметку ссылку на файл.";
+    }
+    return replyText;
+}
+
 async function handleSingle(bot, ctx, msg, options) {
     await ctx.sendChatAction("typing");
 
@@ -374,15 +387,7 @@ async function handleSingle(bot, ctx, msg, options) {
 
     const saved = await options.saveIncoming(note, { baseDir: inboxDir });
 
-    let replyText = `✅ Saved ${options.label}: ${noteId}`;
-    if (saved.storage) {
-        replyText += `\nstorage: ${saved.storage}`;
-    }
-    if (skipped.length) {
-        replyText +=
-            "\n⚠️ Файл слишком большой для скачивания. Прикрепите в заметку ссылку для на файл.";
-    }
-    await ctx.reply(replyText);
+    await replyWithCleanup(bot, ctx, buildSavedReplyText(options, saved, skipped), [msg]);
 }
 
 async function handleAlbum(bot, ctx, items, options) {
@@ -425,15 +430,7 @@ async function handleAlbum(bot, ctx, items, options) {
 
     const saved = await options.saveIncoming(note, { baseDir: inboxDir });
 
-    let replyText = `✅ Saved ${options.label}: ${noteId}`;
-    if (saved.storage) {
-        replyText += `\nstorage: ${saved.storage}`;
-    }
-    if (skipped.length) {
-        replyText +=
-            "\n⚠️ Файл слишком большой для скачивания. Прикрепите в заметку ссылку для на файл.";
-    }
-    await ctx.reply(replyText);
+    await replyWithCleanup(bot, ctx, buildSavedReplyText(options, saved, skipped), items);
 }
 
 function registerIngest(bot, options) {

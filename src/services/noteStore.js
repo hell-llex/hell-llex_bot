@@ -120,8 +120,9 @@ export async function saveIncomingNote(note, { baseDir } = {}) {
 
     const md = renderTemplate(template, vars);
 
-    const notePath = path.posix.join(rootDir, makeNoteFileName(note));
+    const fileName = makeNoteFileName(note);
+    const notePath = path.posix.join(rootDir, fileName);
     await fs.writeFile(notePath, md, "utf8");
 
-    return { dir: rootDir, notePath };
+    return { dir: rootDir, notePath, fileName, noteName: fileName };
 }

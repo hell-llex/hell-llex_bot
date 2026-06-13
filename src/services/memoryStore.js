@@ -56,6 +56,8 @@ async function appendMemoryIndex(note, rootDir) {
     return {
         dir: rootDir,
         notePath: indexPath,
+        fileName: MEMORY_INDEX_FILE,
+        noteName: MEMORY_INDEX_FILE,
         storage: "index",
     };
 }
