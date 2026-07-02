@@ -53,6 +53,9 @@ export function registerHelp(bot) {
                 "/memory dir — показать папку memory",
                 "/memory dir set <path> — папка для знаний",
                 "/memory storage — показать стратегию хранения",
+                "/alert status — показать привязку alerts topic",
+                "/alert test [severity] [text] — отправить тестовый алерт",
+                "/alert send <severity> <text> — отправить ручной алерт",
                 "/cleanup status — показать автоудаление сообщений",
                 "/cleanup set <duration> — изменить TTL, например 30m или 2h",
                 "/cleanup off — отключить автоудаление"
@@ -65,7 +68,7 @@ export function registerHelp(bot) {
             "notes — сохранение заметок и медиа",
             "memory — сохранение знаний",
             "monitoring — заготовка под мониторинг",
-            "alerts — заготовка под алерты",
+            "alerts — topic для уведомлений и алертов",
             "admin — настройки бота"
         );
 

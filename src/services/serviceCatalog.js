@@ -29,10 +29,10 @@ const services = [
     {
         name: "alerts",
         title: "Alerts",
-        status: "planned",
-        description: "заготовка под уведомления и правила алертов",
+        status: "active",
+        description: "принимает уведомления от внутренних модулей и отправляет их в отдельный Telegram topic",
         async handleTopicMessage(ctx) {
-            return ctx.reply("🚨 Alerts topic пока подключен как сервис, правила алертов добавим следующим шагом.");
+            return ctx.reply("🚨 Alerts topic подключен. Для теста используй /alert test из admin topic.");
         },
     },
     {
