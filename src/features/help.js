@@ -43,6 +43,7 @@ export function registerHelp(bot) {
             lines.push(
                 "",
                 "Admin topic:",
+                "/admin — открыть панель с кнопками",
                 "/topic bind admin — привязать текущий topic как admin",
                 "/topic bind <service> <threadId> — привязать topic по threadId",
                 "/topic routes — показать привязки topics",

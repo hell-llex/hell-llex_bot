@@ -11,6 +11,7 @@ import {registerNotesSettings} from "../features/notesSettings.js";
 import {registerMemorySettings} from "../features/memorySettings.js";
 import {registerCleanupSettings} from "../features/cleanupSettings.js";
 import {registerAlert} from "../features/alert.js";
+import {registerAdminMenu} from "../features/adminMenu.js";
 
 export async function registerHandlers(bot, env) {
     registerStart(bot, env);
@@ -23,6 +24,7 @@ export async function registerHandlers(bot, env) {
     registerMemorySettings(bot, env);
     registerCleanupSettings(bot, env);
     registerAlert(bot, env);
+    registerAdminMenu(bot, env);
     registerNote(bot, env);
     registerTopicRouter(bot, env);
     await registerModeHandlers(bot, env);

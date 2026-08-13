@@ -13,6 +13,7 @@ export async function setupBotCommands(bot) {
         await bot.telegram.setMyCommands([
             { command: "start", description: "старт" },
             { command: "help", description: "список команд" },
+            { command: "admin", description: "панель администратора" },
         ]);
 
         console.log("✅ Bot commands set (Telegram menu updated)");
